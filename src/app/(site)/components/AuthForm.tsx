@@ -1,50 +1,89 @@
 'use client';
 
-import { AuthSocialButton, Buttons, Input } from '@/components';
-import React, { useCallback, useState } from 'react';
-import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
-import { BsGithub, BsGoogle  } from 'react-icons/bs';
+import axios from "axios";
 import { signIn, useSession } from 'next-auth/react';
-import { toast } from "react-hot-toast";
+import { useCallback, useEffect, useState } from 'react';
+import { BsGithub, BsGoogle  } from 'react-icons/bs';
+import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { useRouter } from "next/navigation";
+
+import { toast } from "react-hot-toast";
+import { AuthSocialButton, Input } from "@/components";
+import Button from "@/components/Buttons";
 
 type Variant = 'LOGIN' | 'REGISTER';
 
 const AuthForm = () => {
-  const [variant, setVariant] = useState<Variant>('LOGIN');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  
+  const session = useSession();
   const router = useRouter();
+  const [variant, setVariant] = useState<Variant>('LOGIN');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (session?.status === 'authenticated') {
+      router.push('/conversations')
+    }
+  }, [session?.status, router]);
 
   const toggleVariant = useCallback(() => {
     if (variant === 'LOGIN') {
-      setVariant('REGISTER')
+      setVariant('REGISTER');
     } else {
-      setVariant('LOGIN')
+      setVariant('LOGIN');
     }
-  }, [variant])
+  }, [variant]);
 
   const {
     register,
     handleSubmit,
     formState: {
-      errors
+      errors,
     }
   } = useForm<FieldValues>({
     defaultValues: {
       name: '',
       email: '',
-      password: '',
+      password: ''
     }
   });
+
   const onSubmit: SubmitHandler<FieldValues> = (data) => {
     setIsLoading(true);
-
+  
     if (variant === 'REGISTER') {
+      axios.post('/api/register', data)
+      .then(() => signIn('credentials', {
+        ...data,
+        redirect: false,
+      }))
+      .then((callback) => {
+        if (callback?.error) {
+          toast.error('Invalid credentials!');
+        }
 
+        if (callback?.ok) {
+          router.push('/conversations')
+        }
+      })
+      .catch(() => toast.error('Something went wrong!'))
+      .finally(() => setIsLoading(false))
     }
-    if (variant === 'LOGIN') {
 
+    if (variant === 'LOGIN') {
+      signIn('credentials', {
+        ...data,
+        redirect: false
+      })
+      .then((callback) => {
+        if (callback?.error) {
+          toast.error('Invalid credentials!');
+        }
+
+        if (callback?.ok) {
+          router.push('/conversations')
+        }
+      })
+      .finally(() => setIsLoading(false))
     }
   }
 
@@ -63,41 +102,68 @@ const AuthForm = () => {
       })
       .finally(() => setIsLoading(false));
   } 
-  return (
-    <div className='mt-8 sm:mx-auto sm:w-full sm:max-w-md'>
-      <div className='bg-white px-4 py-8 shadow sm:rounded-lg sm:px-10'>
-        <form className='space-y-6' onSubmit={handleSubmit(onSubmit)}>
+
+  return ( 
+    <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div 
+        className="
+        bg-white
+          px-4
+          py-8
+          shadow
+          sm:rounded-lg
+          sm:px-10
+        "
+      >
+        <form 
+          className="space-y-6" 
+          onSubmit={handleSubmit(onSubmit)}
+        >
           {variant === 'REGISTER' && (
-            <Input id='email' label='Email' register={register} errors={errors} />
+            <Input
+              disabled={isLoading}
+              register={register}
+              errors={errors}
+              required
+              id="name" 
+              label="Name"
+            />
           )}
-          <Input
+          <Input 
             disabled={isLoading}
             register={register}
             errors={errors}
             required
-            id="email"
-            label="Email address"
+            id="email" 
+            label="Email address" 
             type="email"
           />
-          <Input
+          <Input 
             disabled={isLoading}
             register={register}
             errors={errors}
             required
-            id="password"
-            label="Password"
+            id="password" 
+            label="Password" 
             type="password"
           />
           <div>
-            <Buttons disabled={isLoading} fullWidth type="submit">
+            <Button disabled={isLoading} fullWidth type="submit">
               {variant === 'LOGIN' ? 'Sign in' : 'Register'}
-            </Buttons>
+            </Button>
           </div>
         </form>
 
         <div className="mt-6">
           <div className="relative">
-            <div className="absolute inset-0 flex items-center">
+            <div 
+              className="
+                absolute 
+                inset-0 
+                flex 
+                items-center
+              "
+            >
               <div className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-sm">
@@ -108,7 +174,7 @@ const AuthForm = () => {
           </div>
 
           <div className="mt-6 flex gap-2">
-            <AuthSocialButton
+            <AuthSocialButton 
               icon={BsGithub} 
               onClick={() => socialAction('github')} 
             />
@@ -118,7 +184,7 @@ const AuthForm = () => {
             />
           </div>
         </div>
-        <div
+        <div 
           className="
             flex 
             gap-2 
@@ -130,10 +196,10 @@ const AuthForm = () => {
           "
         >
           <div>
-            {variant === 'LOGIN' ? 'New to Messenger?' : 'Already have an account?'}
+            {variant === 'LOGIN' ? 'New to Messenger?' : 'Already have an account?'} 
           </div>
-          <div
-            onClick={toggleVariant}
+          <div 
+            onClick={toggleVariant} 
             className="underline cursor-pointer"
           >
             {variant === 'LOGIN' ? 'Create an account' : 'Login'}
@@ -141,7 +207,7 @@ const AuthForm = () => {
         </div>
       </div>
     </div>
-  )
+  );
 }
-
-export default AuthForm // steven manchego -  
+ 
+export default AuthForm;
